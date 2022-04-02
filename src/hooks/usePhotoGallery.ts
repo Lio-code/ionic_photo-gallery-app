@@ -17,6 +17,9 @@ export interface UserPhoto {
   webviewPath?: string;
 }
 
+//constant variable that will act as the key for the store
+const PHOTO_STORAGE = 'photos';
+
 export function usePhotoGallery() {
   //save photo to file system
   const savePicture = async (
@@ -58,6 +61,26 @@ export function usePhotoGallery() {
 
   const [photos, setPhotos] = useState<UserPhoto[]>([]);
 
+  //method that will retrieve the data when the hook loads.
+  useEffect(() => {
+    const loadSaved = async () => {
+      const { value } = await Storage.get({ key: PHOTO_STORAGE });
+      const photosInStorage = (value ? JSON.parse(value) : []) as UserPhoto[];
+
+      for (let photo of photosInStorage) {
+        const file = await Filesystem.readFile({
+          path: photo.filepath,
+          directory: Directory.Data,
+        });
+        // Web platform only: Load the photo as base64 data
+        photo.webviewPath = `data:image/jpeg;base64,${file.data}`;
+      }
+      setPhotos(photosInStorage);
+    };
+    loadSaved();
+  }, []);
+
+  //method to capture the photo with the camera device
   const takePhoto = async () => {
     const photo = await Camera.getPhoto({
       resultType: CameraResultType.Uri,
@@ -70,6 +93,9 @@ export function usePhotoGallery() {
     const savedFileImage = await savePicture(photo, fileName);
     const newPhotos = [savedFileImage, ...photos];
     setPhotos(newPhotos);
+
+    // methods for reading and writing to device storage
+    Storage.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
   };
 
   return {
