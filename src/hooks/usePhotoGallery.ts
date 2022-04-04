@@ -21,6 +21,8 @@ export interface UserPhoto {
 const PHOTO_STORAGE = 'photos';
 
 export function usePhotoGallery() {
+  const [photos, setPhotos] = useState<UserPhoto[]>([]);
+
   //save photo to file system
   //If it’s “hybrid” (Capacitor or Cordova, the two native runtimes), then read the photo file into base64 format using the readFile method.
   const savePicture = async (
@@ -78,8 +80,6 @@ export function usePhotoGallery() {
     });
   }
 
-  const [photos, setPhotos] = useState<UserPhoto[]>([]);
-
   //method that will retrieve the data when the hook loads.
   useEffect(() => {
     const loadSaved = async () => {
@@ -120,8 +120,25 @@ export function usePhotoGallery() {
     Storage.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
   };
 
+  const deletePhoto = async (photo: UserPhoto) => {
+    // Remove this photo from the Photos reference data array
+    const newPhotos = photos.filter((p) => p.filepath !== photo.filepath);
+
+    // Update photos array cache by overwriting the existing photo array
+    Storage.set({ key: PHOTO_STORAGE, value: JSON.stringify(newPhotos) });
+
+    // delete photo file from filesystem
+    const filename = photo.filepath.substr(photo.filepath.lastIndexOf('/') + 1);
+    await Filesystem.deleteFile({
+      path: filename,
+      directory: Directory.Data,
+    });
+    setPhotos(newPhotos);
+  };
+
   return {
     photos,
     takePhoto,
+    deletePhoto,
   };
 }
